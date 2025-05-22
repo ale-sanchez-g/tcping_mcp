@@ -310,10 +310,13 @@ export class TcpingMCPServer {
 // Create the server instance
 const server = new TcpingMCPServer();
 
-// Only start the server if this module is run directly (not imported for testing)
-if (import.meta.url === `file://${process.argv[1]}`) {
-  server.run().catch(console.error);
+// Run the server when this file is executed directly
+if (import.meta.url.endsWith(process.argv[1]) || process.argv[1]?.endsWith('tcping-mcp')) {
+  server.run().catch((error) => {
+    console.error('Failed to start TCPING MCP server:', error);
+    process.exit(1);
+  });
 }
 
-// Export the server instance for testing purposes
+// Export for testing purposes
 export default server;
