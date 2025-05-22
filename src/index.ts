@@ -6,9 +6,7 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { spawn } from "child_process";
-import { promisify } from "util";
-import net from "net";
+import { tcpConnect, tcping } from "./utils/tcp.js";
 
 interface TcpingOptions {
   host: string;
@@ -31,8 +29,10 @@ interface TcpingResult {
   maxTime?: number;
 }
 
-class TcpingMCPServer {
-  private server: Server;
+// Export the class so it can be imported and tested
+export class TcpingMCPServer {
+  // Making server public for testing purposes
+  public server: Server;
 
   constructor() {
     this.server = new Server({
@@ -183,83 +183,25 @@ class TcpingMCPServer {
     });
   }
 
-  private async tcpConnect(host: string, port: number, timeout: number = 3000): Promise<{ success: boolean; responseTime?: number; error?: string }> {
-    return new Promise((resolve) => {
-      const startTime = Date.now();
-      const socket = new net.Socket();
-
-      const timeoutHandler = setTimeout(() => {
-        socket.destroy();
-        resolve({
-          success: false,
-          error: `Connection timeout after ${timeout}ms`,
-        });
-      }, timeout);
-
-      socket.connect(port, host, () => {
-        clearTimeout(timeoutHandler);
-        const responseTime = Date.now() - startTime;
-        socket.destroy();
-        resolve({
-          success: true,
-          responseTime,
-        });
-      });
-
-      socket.on('error', (error) => {
-        clearTimeout(timeoutHandler);
-        socket.destroy();
-        resolve({
-          success: false,
-          error: error.message,
-        });
-      });
-    });
-  }
-
   private async handleTcping(options: TcpingOptions) {
-    const { host, port, timeout = 3000, count = 4, interval = 1000 } = options;
-    const results: Array<{ success: boolean; responseTime?: number; error?: string }> = [];
+    const result = await tcping(options);
     
-    for (let i = 0; i < count; i++) {
-      const result = await this.tcpConnect(host, port, timeout);
-      results.push(result);
-      
-      if (i < count - 1) {
-        await new Promise(resolve => setTimeout(resolve, interval));
-      }
-    }
-
-    const successfulAttempts = results.filter(r => r.success).length;
-    const responseTimes = results.filter(r => r.responseTime).map(r => r.responseTime!);
-    
-    const tcpingResult: TcpingResult = {
-      host,
-      port,
-      success: successfulAttempts > 0,
-      attempts: count,
-      successfulAttempts,
-      averageTime: responseTimes.length > 0 ? Math.round(responseTimes.reduce((a, b) => a + b) / responseTimes.length) : undefined,
-      minTime: responseTimes.length > 0 ? Math.min(...responseTimes) : undefined,
-      maxTime: responseTimes.length > 0 ? Math.max(...responseTimes) : undefined,
-    };
-
-    let output = `TCPING ${host}:${port}\n`;
+    let output = `TCPING ${result.host}:${result.port}\n`;
     output += `\nResults:\n`;
     
-    results.forEach((result, index) => {
-      if (result.success) {
-        output += `  Attempt ${index + 1}: Connected - ${result.responseTime}ms\n`;
+    result.results.forEach((attemptResult, index) => {
+      if (attemptResult.success) {
+        output += `  Attempt ${index + 1}: Connected - ${attemptResult.responseTime}ms\n`;
       } else {
-        output += `  Attempt ${index + 1}: Failed - ${result.error}\n`;
+        output += `  Attempt ${index + 1}: Failed - ${attemptResult.error}\n`;
       }
     });
 
     output += `\nSummary:\n`;
-    output += `  Success Rate: ${successfulAttempts}/${count} (${Math.round(successfulAttempts/count*100)}%)\n`;
+    output += `  Success Rate: ${result.successfulAttempts}/${result.attempts} (${Math.round(result.successfulAttempts/result.attempts*100)}%)\n`;
     
-    if (responseTimes.length > 0) {
-      output += `  Response Times: min=${tcpingResult.minTime}ms, avg=${tcpingResult.averageTime}ms, max=${tcpingResult.maxTime}ms\n`;
+    if (result.averageTime) {
+      output += `  Response Times: min=${result.minTime}ms, avg=${result.averageTime}ms, max=${result.maxTime}ms\n`;
     }
 
     return {
@@ -281,7 +223,7 @@ class TcpingMCPServer {
 
     for (const rule of rules) {
       const { name, host, port, expected } = rule;
-      const result = await this.tcpConnect(host, port, timeout);
+      const result = await tcpConnect(host, port, timeout);
       
       const status = result.success === expected ? "✅ PASS" : "❌ FAIL";
       const actualResult = result.success ? "CONNECTED" : "BLOCKED/FAILED";
@@ -334,7 +276,7 @@ class TcpingMCPServer {
     output += "=" .repeat(50) + "\n\n";
 
     for (let port = startPort; port <= endPort; port++) {
-      const result = await this.tcpConnect(host, port, timeout);
+      const result = await tcpConnect(host, port, timeout);
       
       if (result.success) {
         openPorts.push({ port, responseTime: result.responseTime });
@@ -365,5 +307,13 @@ class TcpingMCPServer {
   }
 }
 
+// Create the server instance
 const server = new TcpingMCPServer();
-server.run().catch(console.error);
+
+// Only start the server if this module is run directly (not imported for testing)
+if (import.meta.url === `file://${process.argv[1]}`) {
+  server.run().catch(console.error);
+}
+
+// Export the server instance for testing purposes
+export default server;

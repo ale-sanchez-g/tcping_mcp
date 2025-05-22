@@ -8,7 +8,13 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "tsc && node dist/index.js",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
+    "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
+    "test:all": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:integration": "node --experimental-vm-modules node_modules/jest/bin/jest.js basic-integration.test.ts",
+    "ci": "npm run test && npm run build"
   },
   "keywords": [
     "mcp",
@@ -24,7 +30,10 @@
     "@modelcontextprotocol/sdk": "^0.4.0"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.14",
     "@types/node": "^20.0.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.3.4",
     "typescript": "^5.0.0"
   },
   "bin": {

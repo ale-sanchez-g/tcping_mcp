@@ -237,3 +237,73 @@ If you encounter TypeScript compiler errors:
 ## License
 
 MIT License - Feel free to modify and distribute as needed.
+
+## Publishing to npm
+
+This project is configured with GitHub Actions to automatically build and publish to the npm registry when you create a new release tag.
+
+### Setup Instructions
+
+1. **Generate an npm Access Token**:
+   - Log in to your npm account on [npmjs.com](https://www.npmjs.com/)
+   - Go to your profile → Access Tokens
+   - Create a new token with "Automation" type (recommended)
+   - Copy the generated token
+
+2. **Add the token to your GitHub repository**:
+   - Go to your GitHub repository
+   - Click on "Settings" → "Secrets and variables" → "Actions"
+   - Click "New repository secret"
+   - Name: `NPM_TOKEN`
+   - Value: Paste your npm token
+   - Click "Add secret"
+
+3. **Publish a new version**:
+   - Update the version in `package.json`
+   - Commit and push your changes
+   - Create and push a new tag:
+     ```bash
+     git tag v1.0.1
+     git push origin v1.0.1
+     ```
+   - The GitHub Action will automatically trigger and publish your package
+
+Alternatively, you can manually trigger the workflow from the "Actions" tab in your GitHub repository.
+## Testing
+
+This project includes a comprehensive test suite using Jest. The tests cover utility functions and validators to ensure the application behaves correctly.
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode (useful during development)
+npm run test:watch
+
+# Run tests with coverage report
+npm run test:coverage
+
+# Run tests and build (used in CI pipeline)
+npm run ci
+```
+
+### Test Structure
+
+- **Unit Tests**: Test individual functions in isolation
+- **Integration Tests**: Verify different components work together
+- **Validation Tests**: Ensure input validation works correctly
+
+### Test Coverage
+
+The project maintains high test coverage to ensure reliability:
+- Statements: >90%
+- Branches: >90%
+- Functions: 100%
+- Lines: >90%
+
+### Continuous Integration
+
+Testing is automatically run in the GitHub Actions CI/CD pipeline before publishing to npm. If tests fail, the package won't be published.
+
